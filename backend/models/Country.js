@@ -5,11 +5,11 @@ const countrySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  Address: {
+  address: {
     type: String,
     required: true,
   },
-  Phone: {
+  phone: {
     type: String,
     required: true,
   },

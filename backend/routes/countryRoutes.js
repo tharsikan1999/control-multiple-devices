@@ -13,7 +13,7 @@ router.get("/", async (req, res) => {
 });
 
 // POST route to add a device to a country
-router.post("/:countryId/devices/:deviceId", async (req, res) => {
+router.put("/:countryId/devices/:deviceId", async (req, res) => {
   const { countryId, deviceId } = req.params;
 
   try {
@@ -40,17 +40,18 @@ router.post("/:countryId/devices/:deviceId", async (req, res) => {
 // POST route to create a new country
 router.post("/", async (req, res) => {
   try {
-    const { name, code } = req.body;
+    const { name, address, phone } = req.body;
 
     // Validate the required fields
-    if (!name || !code) {
+    if (!name || !address || !phone) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     // Create a new country instance
     const newCountry = new Country({
       name,
-      code,
+      address,
+      phone,
     });
 
     // Save the new country to the database
@@ -67,12 +68,12 @@ router.post("/", async (req, res) => {
 /// PUT route to update a country by ID
 router.put("/:id", async (req, res) => {
   try {
-    const { name, code } = req.body;
+    const { name, address, phone } = req.body;
     const countryId = req.params.id;
 
     const country = await Country.findByIdAndUpdate(
       countryId,
-      { name, code },
+      { name, address, phone },
       { new: true }
     );
 

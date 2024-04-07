@@ -35,9 +35,7 @@ router.post("/", async (req, res) => {
     await newDevice.save();
 
     // Return the newly created device
-    res
-      .status(201)
-      .json({ message: "Device added successfully", device: newDevice });
+    res.status(201).json({ newDevice });
   } catch (err) {
     // Handle errors
     res.status(500).json({ message: err.message });
