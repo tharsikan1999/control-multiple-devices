@@ -18,6 +18,9 @@ function App() {
   const [selectedCountryIndex, setSelectedCountryIndex] = useState(null);
   const [devicesVisible, setDevicesVisible] = useState(false);
   const [selectedRowIndex, setSelectedRowIndex] = useState(null);
+  const [countryID, setCountryID] = useState(null);
+  const [selectedDeviceRowIndex, setSelectedDeviceRowIndex] = useState(null);
+  const [selectCountryIndex, setSelectCountryIndex] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -122,8 +125,6 @@ function App() {
     }
   };
 
-  const [countryID, setCountryID] = useState(null);
-
   const addDevice = (index) => {
     setCountryID(countries[index]._id);
   };
@@ -166,6 +167,53 @@ function App() {
       });
     } catch (error) {
       console.error("Error adding data:", error);
+    }
+  };
+
+  const handleDeleteDevice = async (deviceIndex, countryIndex) => {
+    const confirmation = window.confirm(
+      "Are you sure you want to delete this country?"
+    );
+    if (confirmation) {
+      try {
+        const deviceId = countries[countryIndex].devices[deviceIndex]._id;
+        await axios.delete(`http://localhost:3000/devices/${deviceId}`);
+        fetchData();
+      } catch (error) {
+        console.error("Error deleting data:", error);
+      }
+    }
+  };
+
+  const handleUpdateDevice = async (deviceIndex, countryIndex) => {
+    setSelectedDeviceRowIndex(deviceIndex);
+    setSelectCountryIndex(countryIndex);
+    setCountryID(deviceIndex);
+    setDeviceFormData({
+      serialNumber: countries[countryIndex].devices[deviceIndex].serialNumber,
+      image: countries[countryIndex].devices[deviceIndex].image,
+      type: countries[countryIndex].devices[deviceIndex].type,
+      status: countries[countryIndex].devices[deviceIndex].status,
+    });
+  };
+
+  const handleSaveEditDevice = async (deviceIndex, countryIndex) => {
+    try {
+      await axios.put(
+        `http://localhost:3000/devices/${countries[countryIndex].devices[deviceIndex]._id}`,
+        deviceFormData
+      );
+      fetchData();
+      setDeviceFormData({
+        serialNumber: "",
+        image: "",
+        type: "",
+        status: "",
+      });
+      setSelectedDeviceRowIndex(null);
+      setCountryID(null);
+    } catch (error) {
+      console.error("Error updating data:", error);
     }
   };
 
@@ -273,7 +321,7 @@ function App() {
             <option>inactive</option>
           </select>
 
-          {selectedRowIndex === null ? (
+          {selectedDeviceRowIndex === null ? (
             <div
               className="bg-mycolor h-10 w-10 rounded-full flex items-center justify-center font-semibold text-white hover:bg-white text-xl hover:text-mycolor hover:border-2 hover:border-mycolor hover:cursor-pointer"
               onClick={handleSubmitDevice}
@@ -285,7 +333,9 @@ function App() {
           ) : (
             <div
               className="mt-3 bg-mycolor h-10 w-10 rounded-full flex items-center justify-center font-semibold text-white hover:bg-white text-xl hover:text-mycolor hover:border-2 hover:border-mycolor hover:cursor-pointer"
-              onClick={() => handleSaveEdit(selectedRowIndex)}
+              onClick={() =>
+                handleSaveEditDevice(selectedDeviceRowIndex, selectCountryIndex)
+              }
             >
               <p>
                 <FontAwesomeIcon icon={faCheckSquare} />
@@ -441,9 +491,18 @@ function App() {
                                   </td>
                                   <td>
                                     <div className="flex items-center justify-center">
-                                      {selectedRowIndex === index ? (
+                                      {selectedDeviceRowIndex ===
+                                      deviceIndex ? (
                                         <>
-                                          <div className="bg-mycolor h-8 w-8 rounded-full flex items-center justify-center font-semibold text-white ml-2 hover:bg-white hover:text-mycolor hover:border-2 hover:border-mycolor hover:cursor-pointer">
+                                          <div
+                                            className="bg-mycolor h-8 w-8 rounded-full flex items-center justify-center font-semibold text-white ml-2 hover:bg-white hover:text-mycolor hover:border-2 hover:border-mycolor hover:cursor-pointer"
+                                            onClick={() =>
+                                              handleSaveEditDevice(
+                                                deviceIndex,
+                                                index
+                                              )
+                                            }
+                                          >
                                             <p>
                                               <FontAwesomeIcon
                                                 icon={faCheckSquare}
@@ -453,12 +512,28 @@ function App() {
                                         </>
                                       ) : (
                                         <>
-                                          <div className="bg-mycolor h-8 w-8 rounded-full flex items-center justify-center font-semibold text-white ml-2 hover:bg-white hover:text-mycolor hover:border-2 hover:border-mycolor hover:cursor-pointer">
+                                          <div
+                                            className="bg-mycolor h-8 w-8 rounded-full flex items-center justify-center font-semibold text-white ml-2 hover:bg-white hover:text-mycolor hover:border-2 hover:border-mycolor hover:cursor-pointer"
+                                            onClick={() =>
+                                              handleDeleteDevice(
+                                                deviceIndex,
+                                                index
+                                              )
+                                            }
+                                          >
                                             <p>
                                               <FontAwesomeIcon icon={faTrash} />
                                             </p>
                                           </div>
-                                          <div className="bg-mycolor h-8 w-8 rounded-full flex items-center justify-center font-semibold text-white ml-2 hover:bg-white hover:text-mycolor hover:border-2 hover:border-mycolor hover:cursor-pointer">
+                                          <div
+                                            className="bg-mycolor h-8 w-8 rounded-full flex items-center justify-center font-semibold text-white ml-2 hover:bg-white hover:text-mycolor hover:border-2 hover:border-mycolor hover:cursor-pointer"
+                                            onClick={() =>
+                                              handleUpdateDevice(
+                                                deviceIndex,
+                                                index
+                                              )
+                                            }
+                                          >
                                             <p>
                                               <FontAwesomeIcon
                                                 icon={faPenToSquare}
