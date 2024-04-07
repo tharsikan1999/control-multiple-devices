@@ -11,8 +11,6 @@ import {
   faEyeSlash,
 } from "@fortawesome/free-solid-svg-icons";
 
-import userImg from "./Images/userIMG.jpg";
-
 function App() {
   const [countries, setCountries] = useState([]);
   const [selectedCountryIndex, setSelectedCountryIndex] = useState(null);
@@ -53,7 +51,7 @@ function App() {
 
   const [deviceFormData, setDeviceFormData] = useState({
     serialNumber: "",
-    image: "",
+    image: null,
     type: "",
     status: "",
   });
@@ -125,8 +123,12 @@ function App() {
     }
   };
 
-  const addDevice = (index) => {
-    setCountryID(countries[index]._id);
+  const handleImageChange = (event) => {
+    const file = event.target.files[0]; // Get the first file from the FileList
+    setDeviceFormData((prevFormData) => ({
+      ...prevFormData,
+      image: file,
+    }));
   };
 
   const handleChangeDevice = (e) => {
@@ -137,12 +139,27 @@ function App() {
     }));
   };
 
+  const addDevice = (index) => {
+    setCountryID(countries[index]._id);
+  };
+
   const handleSubmitDevice = async () => {
     try {
+      const formData = new FormData();
+      formData.append("serialNumber", deviceFormData.serialNumber);
+      formData.append("image", deviceFormData.image);
+      formData.append("type", deviceFormData.type);
+      formData.append("status", deviceFormData.status);
+
       // Post the device data to create a new device
       const deviceResponse = await axios.post(
         "http://localhost:3000/devices/",
-        deviceFormData
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
 
       // Access the _id of the newly created device from the response
@@ -161,7 +178,7 @@ function App() {
       // Reset the device form data
       setDeviceFormData({
         serialNumber: "",
-        image: "",
+        image: null,
         type: "",
         status: "",
       });
@@ -198,15 +215,32 @@ function App() {
   };
 
   const handleSaveEditDevice = async (deviceIndex, countryIndex) => {
+    console.log(countries[countryIndex].devices[deviceIndex]);
     try {
+      const formData = new FormData();
+      formData.append("serialNumber", deviceFormData.serialNumber);
+      formData.append("type", deviceFormData.type);
+      formData.append("status", deviceFormData.status);
+
+      // Append the image file if it exists
+      if (deviceFormData.image) {
+        formData.append("image", deviceFormData.image);
+      }
+
       await axios.put(
         `http://localhost:3000/devices/${countries[countryIndex].devices[deviceIndex]._id}`,
-        deviceFormData
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
+
       fetchData();
       setDeviceFormData({
         serialNumber: "",
-        image: "",
+        image: null,
         type: "",
         status: "",
       });
@@ -292,11 +326,10 @@ function App() {
           />
           <input
             className="block p-2.5 w-auto phone:w-3/4 text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            type="text"
-            placeholder="Enter Device img"
+            type="file"
             name="image"
-            onChange={handleChangeDevice}
-            value={deviceFormData.image}
+            onChange={handleImageChange}
+            accept="image/*"
             required
           />
           <select
@@ -472,7 +505,7 @@ function App() {
                                   <td>{device.serialNumber}</td>
                                   <td className="w-auto flex justify-center items-center">
                                     <img
-                                      src={userImg}
+                                      src={`http://localhost:3000/${device.image}`}
                                       className="h-24 w-24 my-5"
                                       alt=""
                                     />

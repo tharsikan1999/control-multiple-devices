@@ -2,6 +2,22 @@ const express = require("express");
 const router = express.Router();
 const Device = require("../models/Device");
 const Country = require("../models/Country");
+const fs = require("fs");
+
+const multer = require("multer");
+const path = require("path");
+
+// Set up Multer storage configuration
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "public/uploads/"); // specify the directory where uploaded images will be stored
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // append the timestamp to the filename to ensure uniqueness
+  },
+});
+
+const upload = multer({ storage: storage });
 
 // Get all devices
 router.get("/", async (req, res) => {
@@ -14,12 +30,14 @@ router.get("/", async (req, res) => {
 });
 
 // POST route to create a new device
-router.post("/", async (req, res) => {
+router.post("/", upload.single("image"), async (req, res) => {
   try {
-    const { serialNumber, type, image, status } = req.body;
+    const { serialNumber, type, status } = req.body;
+
+    const image = req.file.path.replace("public/", "");
 
     // Validate the required fields
-    if (!serialNumber || !type || !image || !status) {
+    if (!serialNumber || !type || !status || !image) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -42,11 +60,17 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT route to update a device by ID
-router.put("/:id", async (req, res) => {
+/// PUT route to update a device by ID
+router.put("/:id", upload.single("image"), async (req, res) => {
   try {
     const deviceId = req.params.id;
-    const { serialNumber, type, image, status } = req.body;
+    const { serialNumber, type, status } = req.body;
+
+    let image;
+    // Check if a file is uploaded
+    if (req.file) {
+      image = req.file.path.replace("public/", "");
+    }
 
     // Check if the device exists
     const device = await Device.findById(deviceId);
@@ -57,7 +81,10 @@ router.put("/:id", async (req, res) => {
     // Update the device fields
     device.serialNumber = serialNumber;
     device.type = type;
-    device.image = image;
+    // Update image only if it's defined (i.e., a file is uploaded)
+    if (image) {
+      device.image = image;
+    }
     device.status = status;
 
     // Save the updated device to the database
@@ -87,6 +114,18 @@ router.delete("/:id", async (req, res) => {
       { devices: deviceId },
       { $pull: { devices: deviceId } }
     );
+
+    // Delete the associated file
+    if (device.image) {
+      // Construct the absolute path to the file
+      const filePath = path.join(__dirname, "..", "public", device.image);
+
+      // Check if the file exists
+      if (fs.existsSync(filePath)) {
+        // Delete the file
+        fs.unlinkSync(filePath);
+      }
+    }
 
     // Delete the device from the database
     await Device.deleteOne({ _id: deviceId });
