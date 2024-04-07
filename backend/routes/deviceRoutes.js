@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { body, validationResult } = require("express-validator");
 const Device = require("../models/Device");
 const Country = require("../models/Country");
 const fs = require("fs");
@@ -29,17 +30,26 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Validation middleware for POST route
+const validateDevice = [
+  body("serialNumber").notEmpty().withMessage("Serial number is required"),
+  body("type").notEmpty().withMessage("Type is required"),
+  body("status").notEmpty().withMessage("Status is required"),
+  // Add more validations if needed
+];
+
 // POST route to create a new device
-router.post("/", upload.single("image"), async (req, res) => {
+router.post("/", upload.single("image"), validateDevice, async (req, res) => {
   try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { serialNumber, type, status } = req.body;
 
-    const image = req.file.path.replace("public/", "");
-
-    // Validate the required fields
-    if (!serialNumber || !type || !status || !image) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
+    const image = req.file ? req.file.path.replace("public/", "") : null;
 
     // Create a new device instance
     const newDevice = new Device({
@@ -61,42 +71,66 @@ router.post("/", upload.single("image"), async (req, res) => {
 });
 
 /// PUT route to update a device by ID
-router.put("/:id", upload.single("image"), async (req, res) => {
-  try {
-    const deviceId = req.params.id;
-    const { serialNumber, type, status } = req.body;
-
-    let image;
-    // Check if a file is uploaded
-    if (req.file) {
-      image = req.file.path.replace("public/", "");
+router.put(
+  "/:id",
+  upload.single("image"),
+  [
+    // Validation middleware using express-validator
+    body("serialNumber").notEmpty().withMessage("Serial number is required"),
+    body("type").notEmpty().withMessage("Type is required"),
+    body("status").notEmpty().withMessage("Status is required"),
+  ],
+  async (req, res) => {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    // Check if the device exists
-    const device = await Device.findById(deviceId);
-    if (!device) {
-      return res.status(404).json({ message: "Device not found" });
+    try {
+      const deviceId = req.params.id;
+      const { serialNumber, type, status } = req.body;
+
+      let image;
+      // Check if a file is uploaded
+      if (req.file) {
+        image = req.file.path.replace("public/", "");
+      }
+
+      // Check if the device exists
+      const device = await Device.findById(deviceId);
+      if (!device) {
+        return res.status(404).json({ message: "Device not found" });
+      }
+
+      // Remove the old image file if a new image is uploaded
+      if (image && device.image) {
+        const oldImagePath = path.join(__dirname, "..", "public", device.image);
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+
+      // Update the device fields
+      device.serialNumber = serialNumber;
+      device.type = type;
+      // Update image only if it's defined (i.e., a file is uploaded)
+      if (image) {
+        device.image = image;
+      }
+      device.status = status;
+
+      // Save the updated device to the database
+      const updatedDevice = await device.save();
+
+      // Return the updated device
+      res.json(updatedDevice);
+    } catch (err) {
+      // Handle errors
+      res.status(500).json({ message: err.message });
     }
-
-    // Update the device fields
-    device.serialNumber = serialNumber;
-    device.type = type;
-    // Update image only if it's defined (i.e., a file is uploaded)
-    if (image) {
-      device.image = image;
-    }
-    device.status = status;
-
-    // Save the updated device to the database
-    const updatedDevice = await device.save();
-
-    // Return the updated device
-    res.json(updatedDevice);
-  } catch (err) {
-    // Handle errors
-    res.status(500).json({ message: err.message });
   }
-});
+);
 
 // DELETE route to delete a device by ID
 router.delete("/:id", async (req, res) => {
